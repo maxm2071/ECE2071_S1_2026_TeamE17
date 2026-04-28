@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
-int get_average(int array[], int len);
-void change_array(int array[], int len, int value);
+uint8_t get_average(uint8_t array[], int len);
+void change_array(uint8_t array[], int len, uint8_t value);
 
 int main(){
 
@@ -11,17 +12,17 @@ int main(){
     return 0;
 }
 
-int get_average(int array[], int len){
+uint8_t get_average(uint8_t array[], int len){
     int sum = 0;
     for (int i = 0; i < len; i++){
         sum += array[i];
     }
-    int average = sum/len;
+    uint8_t average = sum/len;
     return average;
 
 }
 
-void change_array(int array[], int len, int value){
+void change_array(uint8_t array[], int len, uint8_t value){
     for(int i = 1; i < len; i++){
         array[i-1] = array[i];
     }
