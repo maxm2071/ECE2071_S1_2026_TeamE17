@@ -14,7 +14,7 @@ my_list = []
 
 SAMPLE_RATE = 5000
 
-for i in range(5 * SAMPLE_RATE):
+for i in range(10 * SAMPLE_RATE):
     byte = ser.read(1)
     bit = byte[0]
     my_list.append(bit)
