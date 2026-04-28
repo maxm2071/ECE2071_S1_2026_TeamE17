@@ -13,7 +13,7 @@ int main(){
 }
 
 uint8_t get_average(uint8_t array[], int len){
-    int sum = 0;
+    uint8_t sum = 0;
     for (int i = 0; i < len; i++){
         sum += array[i];
     }
