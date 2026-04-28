@@ -351,7 +351,7 @@ static void MX_GPIO_Init(void)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc1) {
   uint8_t buffer[1];
   buffer[0] = HAL_ADC_GetValue(hadc1);
-  HAL_UART_Transmit(&huart2, buffer, sizeof(buffer), HAL_MAX_DELAY);
+  HAL_UART_Transmit(&huart1, buffer, sizeof(buffer), HAL_MAX_DELAY);
   HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
 }
 /* USER CODE END 4 */
