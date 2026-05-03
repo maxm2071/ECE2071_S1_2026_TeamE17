@@ -9,6 +9,7 @@ devices = serial.tools.list_ports.comports()
 for i in devices:
     print(i)
 
+ser = serial.Serial("COM8", 921600)
 
 my_list = []
 
