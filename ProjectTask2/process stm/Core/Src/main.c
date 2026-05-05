@@ -90,6 +90,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 		}
 		else{
 			is_distanceTrigger = 0;
+      is_sendValid = 1;
 		}
 	}else{
 		if(is_sendValid == 1){
