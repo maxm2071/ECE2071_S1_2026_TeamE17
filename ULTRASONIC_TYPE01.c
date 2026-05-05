@@ -64,7 +64,21 @@ static void MX_TIM16_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint8_t get_average(uint8_t array[], int len){
+    uint16_t sum = 0;
+    for (int i = 0; i < len; i++){
+        sum += array[i];
+    }
+    uint8_t average = sum/len;
+    return (uint8_t)average;
+}
 
+void change_array(uint8_t array[], int len, uint8_t value){
+    for(int i = 1; i < len; i++){
+        array[i-1] = array[i];
+    }
+    array[len-1] = value;
+}
 /* USER CODE END 0 */
 
 /**
@@ -111,7 +125,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   HAL_ADC_Start_IT(&hadc1);
   HAL_TIM_Base_Start(&htim16);
-
+  uint8_t rec_buffer[1];
+  uint8_t send_buffer[1];
+  int message_received = 0;
+  uint8_t array[moving_length] = {0};
+  int counter = 0;
   while (1)
   {
       HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
@@ -122,9 +140,6 @@ int main(void)
 
       __HAL_TIM_SET_COUNTER(&htim16, 0);
 
-
-      __HAL_TIM_SET_COUNTER(&htim16, 0);
-
       while (HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin) == 1)
       {
           record = __HAL_TIM_GET_COUNTER(&htim16);
@@ -132,7 +147,24 @@ int main(void)
 
       if (record < 583)
       {
-          HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+          while (1) {
+
+            // check the distance again
+            if (counter >= 11000) {
+              break; // idk if this is the best
+            }
+
+            HAL_UART_Receive(&huart1, rec_buffer, sizeof(rec_buffer), 10);
+            if (rec_buffer[0] != 0) {
+              message_received++;
+            }
+            if (message_received >= 1) {
+              change_array(array, moving_length, rec_buffer[0]);
+              send_buffer[0] = get_average(array, moving_length);
+              HAL_UART_Transmit(&huart2, send_buffer, sizeof(send_buffer), HAL_MAX_DELAY);
+              message_received = 0;
+            }
+          }
       }
       delay(60);
   }
@@ -410,12 +442,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc1) {
-  uint8_t buffer[1];
-  buffer[0] = HAL_ADC_GetValue(hadc1);
-  HAL_UART_Transmit(&huart2, buffer, sizeof(buffer), HAL_MAX_DELAY);
-  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
-}
+
 /* USER CODE END 4 */
 
 /**
