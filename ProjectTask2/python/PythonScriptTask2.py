@@ -10,13 +10,13 @@ devices = serial.tools.list_ports.comports()
 for i in devices:
     print(i)
 
-ser = serial.Serial("COM10", 115200)
+ser = serial.Serial("COM3", 115200)
 
 
 
 my_list = []
 
-SAMPLE_RATE = 5000
+SAMPLE_RATE = 10000
 clip_length = 10
 is_distanceTriggerMode = input("enter 1 for distance trigger mode: ")
 ser.write(is_distanceTriggerMode.encode())
@@ -52,7 +52,7 @@ data = data.astype(np.uint8)
 
 save_file = input("enter 1 to save WAV file: ")
 if (save_file == '1'):
-    with wave.open('Project_Task_1.wav', 'wb') as wf:
+    with wave.open('Project_Task_2.wav', 'wb') as wf:
         wf.setnchannels(1)
         wf.setsampwidth(1)
         wf.setframerate(SAMPLE_RATE)
@@ -65,12 +65,12 @@ if (save_file == '1'):
     plt.ylabel('Amplitude')
     plt.xlabel('Time (s)')
     plt.title('amplitude vs time of audio')
-    plt.savefig('Project_Task_1.png')
+    plt.savefig('Project_Task_2.png')
     plt.show()
 save_file = input("enter 1 to save a csv file of the audio data: ")
 if (save_file == '1'):
     csv = np.insert(array,0,SAMPLE_RATE)
-    np.savetxt('Project_Task_1.csv',csv,delimiter=',')
+    np.savetxt('Project_Task_2.csv',csv,delimiter=',')
 
 #plt.show()
 print("done")
