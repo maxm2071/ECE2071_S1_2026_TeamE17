@@ -58,17 +58,18 @@ static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
-
+static void SPI1_WriteByte (uint8_t tx_byte){
+	while(!LL_SPI_IsActiveFlag_TXE(SPI1)){;}
+	LL_SPI_TransmitData8(SPI1, tx_byte);
+	while(LL_SPI_IsActiveFlag_BSY(SPI1)){;}
+	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+	LL_SPI_ClearFlag_OVR(SPI1);
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
-	uint8_t buffer[1];
-	buffer[0] = HAL_ADC_GetValue(hadc1);
-	HAL_UART_Transmit(&huart2, buffer, sizeof(buffer), 1);
-	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
-}
+
 /* USER CODE END 0 */
 
 /**
@@ -111,11 +112,14 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   HAL_ADC_Start_IT(&hadc1);
+  HAL_TIM_Base_Start(&htim1);
+  LL_SPI_Enable(SPI1);
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
   }
   /* USER CODE END 3 */
 }
@@ -314,7 +318,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 31;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 65535;
+  htim1.Init.Period = 100;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -327,7 +331,7 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
@@ -408,7 +412,13 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc1) {
+  uint8_t buffer[1];
+  buffer[0] = HAL_ADC_GetValue(hadc1);
+  uint8_t test = 4;
+  SPI1_WriteByte(test);
+  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
+}
 /* USER CODE END 4 */
 
 /**
