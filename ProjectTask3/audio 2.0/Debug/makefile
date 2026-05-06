@@ -34,34 +34,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := sample_stm
+BUILD_ARTIFACT_NAME := audio
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-sample_stm.elf \
+audio.elf \
 
 MAP_FILES += \
-sample_stm.map \
+audio.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-sample_stm.list \
+audio.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: sample_stm.elf secondary-outputs
+main-build: audio.elf secondary-outputs
 
 # Tool invocations
-sample_stm.elf sample_stm.map: $(OBJS) $(USER_OBJS) C:\Users\yvanu\Desktop\Year\ 2\ Sem\ 1\ECE2071\project\sampling\ stm\STM32L432KCUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "sample_stm.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\yvanu\Desktop\Year 2 Sem 1\ECE2071\project\sampling stm\STM32L432KCUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="sample_stm.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+audio.elf audio.map: $(OBJS) $(USER_OBJS) C:\Users\yvanu\Desktop\Year\ 2\ Sem\ 1\ECE2071\stm32\audio\ 2.0\STM32L432KCUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "audio.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\yvanu\Desktop\Year 2 Sem 1\ECE2071\stm32\audio 2.0\STM32L432KCUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="audio.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -70,14 +70,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-sample_stm.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "sample_stm.list"
+audio.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "audio.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) default.size.stdout sample_stm.elf sample_stm.list sample_stm.map
+	-$(RM) audio.elf audio.list audio.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
