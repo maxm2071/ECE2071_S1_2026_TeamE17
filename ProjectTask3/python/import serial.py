@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import wave
 import time
+import keyboard
 
 devices = serial.tools.list_ports.comports()
 
 for i in devices:
     print(i)
 
-ser = serial.Serial("COM10", 115200)
+ser = serial.Serial("COM3", 115200)
 
 
 
@@ -19,6 +20,7 @@ my_list = []
 SAMPLE_RATE = 5000
 clip_length = 10
 is_distanceTriggerMode = input("enter 1 for distance trigger mode: ")
+#ser.read(1)
 ser.write(is_distanceTriggerMode.encode())
 
 if (is_distanceTriggerMode == '1'):
@@ -26,13 +28,17 @@ if (is_distanceTriggerMode == '1'):
     byte = ser.read(1)
     timeOut = False
     ser.timeout = 1.5
+    print("HOLD ENTER TO EXIT DISTANCE TRIGGER MODE")
     while (timeOut == False):
         bit = byte[0]
         my_list.append(bit)
-        start_time = time.time()
+        #start_time = time.time()
         byte = ser.read(1)
-        if (time.time()-start_time > 1):
+        #if (time.time()-start_time > 1):
+            #timeOut = True
+        if (keyboard.is_pressed('enter')):
             timeOut = True
+            
 
     clip_length = len(my_list)/SAMPLE_RATE
 
