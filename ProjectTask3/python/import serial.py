@@ -11,13 +11,13 @@ devices = serial.tools.list_ports.comports()
 for i in devices:
     print(i)
 
-ser = serial.Serial("COM3", 115200)
+ser = serial.Serial("COM10", 115200)
 
 
 
 my_list = []
 
-SAMPLE_RATE = 5000
+SAMPLE_RATE = 10000
 clip_length = 10
 is_distanceTriggerMode = input("enter 1 for distance trigger mode: ")
 #ser.read(1)
