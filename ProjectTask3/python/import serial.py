@@ -69,7 +69,7 @@ data = data.astype(np.uint8)
 
 save_file = input("enter 1 to save WAV file: ")
 if (save_file == '1'):
-    with wave.open('Project_Task_1.wav', 'wb') as wf:
+    with wave.open('audio_transmission_project.wav', 'wb') as wf:
         wf.setnchannels(1)
         wf.setsampwidth(1)
         wf.setframerate(SAMPLE_RATE)
@@ -83,12 +83,12 @@ plt.xlabel('Time (s)')
 plt.title('amplitude vs time of audio')
 if (save_file == '1'):
     
-    plt.savefig('Project_Task_1.png')
+    plt.savefig('audio_transmission_project.png')
     plt.show()
 save_file = input("enter 1 to save a csv file of the audio data: ")
 if (save_file == '1'):
     csv = np.insert(array,0,SAMPLE_RATE)
-    np.savetxt('Project_Task_1.csv',csv,delimiter=',')
+    np.savetxt('audio_transmission_project.csv',csv,delimiter=',')
 
 #plt.show()
 print("done")

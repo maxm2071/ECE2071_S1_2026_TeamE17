@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <string.h>
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -49,6 +49,7 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 #define MAX_LEN 1000
 #define MOVING_LEN 5
+#define OUTLIER 2048
 
 
 uint8_t buffer[2][MAX_LEN];
@@ -105,6 +106,12 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
 
 	if (buffer_index < MAX_LEN){
 		//get average in line due to it being faster than calling functions as no jumping is required
+		if(abs((int)received_byte[0]-OUTLIER) > 2000){
+			buffer[SPI_rec][buffer_index] = (uint8_t)(128);
+
+
+
+		}else{
 		uint32_t average_sum = received_byte[0];
 		for (int i = 0; i<MOVING_LEN-1; i++){
 			average_sum += average_array[i];
@@ -112,9 +119,12 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
 		}
 		average_array[MOVING_LEN-1] = received_byte[0];
 
+
+
 		//1 array 2 buffers, SPI_rec switches between 1 and 0 depending on which one is being
 		//UARTed (got idea of using a 2 index array instead of 2 separate arrays but implementation is my own)
 		buffer[SPI_rec][buffer_index] = (uint8_t)((average_sum/MOVING_LEN)>>4);
+		}
 
 		buffer_index++;
 	}
