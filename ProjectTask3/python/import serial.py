@@ -6,18 +6,18 @@ import wave
 import time
 import keyboard
 
-devices = serial.tools.list_ports.comports()
+#devices = serial.tools.list_ports.comports()
 
-for i in devices:
-    print(i)
+#for i in devices:
+    #print(i)
 
-ser = serial.Serial("COM10", 115200)
+ser = serial.Serial("COM10", 921600)
 
 
 
 my_list = []
 
-SAMPLE_RATE = 10000
+SAMPLE_RATE = 22050
 clip_length = 10
 is_distanceTriggerMode = input("enter 1 for distance trigger mode: ")
 #ser.read(1)
@@ -28,17 +28,28 @@ if (is_distanceTriggerMode == '1'):
     byte = ser.read(1)
     timeOut = False
     ser.timeout = 1.5
-    print("HOLD ENTER TO EXIT DISTANCE TRIGGER MODE")
+    print("HOLD 'shift' KEY TO EXIT DISTANCE TRIGGER MODE")
     while (timeOut == False):
-        bit = byte[0]
-        my_list.append(bit)
-        #start_time = time.time()
+        if (byte[0] != -1):
+            bit = byte[0]
+            my_list.append(bit)
+        start_time = time.time()
         byte = ser.read(1)
-        #if (time.time()-start_time > 1):
-            #timeOut = True
-        if (keyboard.is_pressed('enter')):
+        if (time.time()-start_time > 1):
+            byte = [-1]
+        
+        if (keyboard.is_pressed('shift')):
+            #input()
+            if timeOut == False:
+                print('exiting distance trigger mode')
             timeOut = True
-            
+    
+        
+    time.sleep(1) 
+    #input()
+    
+
+        
 
     clip_length = len(my_list)/SAMPLE_RATE
 
@@ -50,7 +61,7 @@ else:
         my_list.append(bit)
 
 data = np.array(my_list)
-print(data)
+#print(data)
 
 data = (data - data.min()) / (data.max() - data.min())
 data = data * 255
@@ -65,12 +76,13 @@ if (save_file == '1'):
         wf.writeframes(data.tobytes())
 
 save_file = input("enter 1 to save png file of amplitude over time: ")
+array = np.arange(0,clip_length,1/SAMPLE_RATE)
+plt.plot(array,data)
+plt.ylabel('Amplitude')
+plt.xlabel('Time (s)')
+plt.title('amplitude vs time of audio')
 if (save_file == '1'):
-    array = np.arange(0,clip_length,1/SAMPLE_RATE)
-    plt.plot(array,data)
-    plt.ylabel('Amplitude')
-    plt.xlabel('Time (s)')
-    plt.title('amplitude vs time of audio')
+    
     plt.savefig('Project_Task_1.png')
     plt.show()
 save_file = input("enter 1 to save a csv file of the audio data: ")

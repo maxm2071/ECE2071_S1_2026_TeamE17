@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include <string.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -42,18 +42,29 @@
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim16;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-#define MAX_LEN 100
+#define MAX_LEN 1000
+#define MOVING_LEN 5
+
+
 uint8_t buffer[2][MAX_LEN];
 int SPI_rec = 0;
 int UART_trans;
 int buffer_index = 0;
-uint8_t received_byte[1];
+uint16_t received_byte[1];
 int is_UARTING = 0;
 int buffer_flag = 0;
+//uint32_t average_sum = 0;
 
+
+int is_distanceTrigger = 0;
+int is_sendValid = 1;
+uint16_t average_array[MOVING_LEN] = {0};
+uint8_t comp_buffer;
 
 /* USER CODE END PV */
 
@@ -62,37 +73,89 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
-	if (buffer_index >75){
-	HAL_GPIO_WritePin(LD3_GPIO_Port,LD3_Pin,1);
-	}
+/*
+uint8_t get_average(uint16_t array[], int len, uint16_t value){
+	 for(int i = 1; i < len; i++){
+	        array[i-1] = array[i];
+	    }
+	 array[len-1] = value;
+    uint32_t sum = 0;
+    for (int i = 0; i < len; i++){
+        sum += array[i];
+    }
+    uint16_t average = sum/len;
+    return (uint8_t)average;
+}
+
+void change_array(uint16_t array[], int len, uint16_t value){
+    for(int i = 1; i < len; i++){
+        array[i-1] = array[i];
+    }
+    array[len-1] = value;
+}
+*/
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
+
 	if (buffer_index < MAX_LEN){
-		buffer[SPI_rec][buffer_index] = received_byte[0];
+		//get average in line due to it being faster than calling functions as no jumping is required
+		uint32_t average_sum = received_byte[0];
+		for (int i = 0; i<MOVING_LEN-1; i++){
+			average_sum += average_array[i];
+			average_array[i]= average_array[i+1];
+		}
+		average_array[MOVING_LEN-1] = received_byte[0];
+
+		//1 array 2 buffers, SPI_rec switches between 1 and 0 depending on which one is being
+		//UARTed (got idea of using a 2 index array instead of 2 separate arrays but implementation is my own)
+		buffer[SPI_rec][buffer_index] = (uint8_t)((average_sum/MOVING_LEN)>>4);
+
 		buffer_index++;
 	}
-	if (buffer_index >= MAX_LEN && is_UARTING == 0){
+	//buffer is full check that UARTing is complete
+	if(buffer_index >= MAX_LEN && is_sendValid == 1 && is_UARTING == 0){
+		//raise buffer flag so CPU knows it can start UARTing again
 		buffer_flag = 1;
+		//switch array to receive into
 		SPI_rec = SPI_rec ^1;
+		//buffer index goes back to 0
 		buffer_index = 0;
 
 
 		}
+	//call spi receive again so that interrupt will fire again
+	HAL_SPI_Receive_IT(&hspi1, received_byte, 2);
 
-
-
-	HAL_SPI_Receive_IT(&hspi1, received_byte, sizeof(received_byte));
 }
 
-HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
+	//let SPI callback know that it can switch the arrays
 	is_UARTING = 0;
 
 }
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+	//receiving this means the user is deciding between distance trigger mode and regular
+	HAL_UART_Receive_IT(&huart2, &comp_buffer, 1);
+	//buffer_index = 0;
+	//distance trigger logic
+	if (comp_buffer == '1'){
+
+		is_distanceTrigger = 1;
+	}else{
+		is_distanceTrigger = 0;
+		is_sendValid = 1;
+	}
+
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -126,21 +189,73 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_SPI1_Init();
+  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_SPI_Receive_IT(&hspi1, received_byte, sizeof(received_byte));
+  //start timers, start interrupt functions initialise US sensor variables
+	HAL_UART_Receive_IT(&huart2, &comp_buffer, 1);
+	HAL_SPI_Receive_IT(&hspi1, received_byte, 2);
+	HAL_TIM_Base_Start(&htim16);
+	__HAL_TIM_SET_COUNTER(&htim16, 0);
+	float time;
+	float distance;
   while (1)
   {
+	  //buffer_flag means UARTing should commence
 	  if (buffer_flag == 1){
-//XOR to flip bit from 1 to 0 or back to know which array to use
+		  //XOR to flip bit from 1 to 0 or back to know which array to send
+		  //opposite of the array that is currently being filled
 		  UART_trans = SPI_rec ^ 1;
+		  //set global variables so that array being sent isnt being received
+		  //to and make sure system doesnt try send an array again
 		  is_UARTING = 1;
+		  buffer_flag = 0;
 		  HAL_UART_Transmit_IT(&huart2, buffer[UART_trans], MAX_LEN);
 	  }
+		if (is_distanceTrigger == 1){
+			//HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+		  if (__HAL_TIM_GET_COUNTER(&htim16) <= 10){
+			  HAL_GPIO_WritePin(trigger_GPIO_Port, trigger_Pin, 1);
+		  }else{
+			  HAL_GPIO_WritePin(trigger_GPIO_Port, trigger_Pin, 0);
+			  //HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+			  if (HAL_GPIO_ReadPin(echo_GPIO_Port, echo_Pin) == 1){
+				  __HAL_TIM_SET_COUNTER(&htim16, 0);
+				  //HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+				  while(HAL_GPIO_ReadPin(echo_GPIO_Port, echo_Pin) == 1){
+					  continue;
+				  }
+				  time = __HAL_TIM_GET_COUNTER(&htim16);
+				  distance = (time/58.309);
+				  //HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+				  if (distance < 10){
+					  	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+					  	  is_sendValid = 1;
+					  } else {
+						  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
+						  is_sendValid = 0;
+					  }
+				  __HAL_TIM_SET_COUNTER(&htim16, 0);
+				  while (__HAL_TIM_GET_COUNTER(&htim16) < 60000) {
+					  if (buffer_flag == 1){
+						  //XOR to flip bit from 1 to 0 or back to know which array to use
+						  UART_trans = SPI_rec ^ 1;
+						  is_UARTING = 1;
+						  HAL_UART_Transmit_IT(&huart2, buffer[UART_trans], MAX_LEN);
+						  buffer_flag = 0;
+					  }
+				  }
+
+				  __HAL_TIM_SET_COUNTER(&htim16, 0);
+				  }
+
+			  }
+		  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -227,7 +342,7 @@ static void MX_SPI1_Init(void)
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_SLAVE;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES_RXONLY;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.DataSize = SPI_DATASIZE_12BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
@@ -248,6 +363,38 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 31;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 65535;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -263,7 +410,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  huart2.Init.BaudRate = 921600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -300,7 +447,23 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(trigger_GPIO_Port, trigger_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : echo_Pin */
+  GPIO_InitStruct.Pin = echo_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(echo_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : trigger_Pin */
+  GPIO_InitStruct.Pin = trigger_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(trigger_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD3_Pin */
   GPIO_InitStruct.Pin = LD3_Pin;
