@@ -48,7 +48,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 #define MAX_LEN 1000
-#define MOVING_LEN 5
+#define MOVING_LEN 10
 #define OUTLIER 2048
 
 
@@ -56,7 +56,7 @@ uint8_t buffer[2][MAX_LEN];
 int SPI_rec = 0;
 int UART_trans;
 int buffer_index = 0;
-uint16_t received_byte[1];
+uint16_t received_byte[2];
 int is_UARTING = 0;
 int buffer_flag = 0;
 //uint32_t average_sum = 0;
@@ -106,18 +106,19 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
 
 	if (buffer_index < MAX_LEN){
 		//get average in line due to it being faster than calling functions as no jumping is required
-		if(abs((int)received_byte[0]-OUTLIER) > 2000){
+		uint16_t down_sample = (received_byte[0] + received_byte[1])/2;
+		if(abs((int)down_sample-OUTLIER) > 2000){
 			buffer[SPI_rec][buffer_index] = (uint8_t)(128);
 
 
 
 		}else{
-		uint32_t average_sum = received_byte[0];
+		uint32_t average_sum = down_sample;
 		for (int i = 0; i<MOVING_LEN-1; i++){
 			average_sum += average_array[i];
 			average_array[i]= average_array[i+1];
 		}
-		average_array[MOVING_LEN-1] = received_byte[0];
+		average_array[MOVING_LEN-1] = down_sample;
 
 
 
